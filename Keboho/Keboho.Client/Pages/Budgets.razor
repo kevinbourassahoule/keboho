@@ -1,0 +1,63 @@
+﻿@page "/budgets"
+@using Keboho.Shared
+@inject HttpClient Http
+
+<h1>Budgets</h1>
+
+@if (budgets != null)
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var budget in budgets)
+            {
+                <tr>
+                    <td>
+                        <NavLink href="@($"/budgets/{budget.Id}")">
+                            @budget.Name
+                        </NavLink>
+                    </td>
+                    <td>
+                        <button type="button" class="btn btn-link btn-sm" @onclick="() => DeleteBudget(budget.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button class="btn btn-primary" @onclick="AddBudget">Add budget</button>
+}
+else
+{
+    <div>Loading...</div>
+}
+
+@code {
+    IEnumerable<Keboho.Shared.Budget> budgets;
+
+    protected override async Task OnInitAsync()
+    {
+        await GetBudgets();
+    }
+
+    private async Task AddBudget()
+    {
+        await Http.PostJsonAsync($"/api/budgets", new Keboho.Shared.Budget() { Name = "New budget" });
+        await GetBudgets();
+    }
+
+    private async Task DeleteBudget(int budgetId)
+    {
+        await Http.DeleteAsync($"/api/budgets/{budgetId}");
+        await GetBudgets();
+    }
+
+    private async Task GetBudgets()
+    {
+        budgets = await Http.GetJsonAsync<IEnumerable<Keboho.Shared.Budget>>($"/api/budgets");
+    }
+}

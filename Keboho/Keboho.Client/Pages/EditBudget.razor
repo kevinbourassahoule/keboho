@@ -1,0 +1,102 @@
+﻿@page "/budgets/{BudgetId:int}/edit"
+@using Keboho.Shared
+@inject HttpClient Http
+
+<NavLink href="@($"/budgets/{BudgetId}")">Back</NavLink>
+
+@if (Budget != null)
+{
+    <div class="form-group">
+        <label>Name</label>
+        <input type="text" class="form-control" @bind="Budget.Name" />
+    </div>
+    <div class="form-group">
+        <label>Description</label>
+        <div class="input-group">
+            <input type="text" class="form-control" />
+        </div>
+    </div>
+
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Frequency</th>
+                <th>Interval</th>
+                <th>Start date</th>
+                <th>End date</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var cashFlow in Budget.CashFlows)
+            {
+                <tr>
+                    <td>
+                        <input type="text" class="form-control form-control-sm" @bind="cashFlow.Description" />
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm" @bind="cashFlow.Amount" />
+                    </td>
+                    <td>
+                        <select class="custom-select custom-select-sm" @bind="cashFlow.FrequencyType">
+                            <option value="@CashFlowFrequencyType.Once">@CashFlowFrequencyType.Once.ToString()</option>
+                            <option value="@CashFlowFrequencyType.Day">@CashFlowFrequencyType.Day.ToString()</option>
+                            <option value="@CashFlowFrequencyType.Week">@CashFlowFrequencyType.Week.ToString()</option>
+                            <option value="@CashFlowFrequencyType.Month">@CashFlowFrequencyType.Month.ToString()</option>
+                            <option value="@CashFlowFrequencyType.Yearly">@CashFlowFrequencyType.Yearly.ToString()</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" class="form-control form-control-sm" @bind="cashFlow.FrequencyInterval" />
+                    </td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm" @bind="cashFlow.StartDate" @bind:format="yyyy-MM-dd" />
+                    </td>
+                    <td>
+                        <input type="date" class="form-control form-control-sm" @bind="cashFlow.EndDate" @bind:format="yyyy-MM-dd" />
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-light" @onclick="@(() => DeleteCashFlow(cashFlow))">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <button type="button" class="btn btn-primary" @onclick="AddCashFlow">Add cash flow</button>
+    <button type="button" class="btn btn-primary" @onclick="SaveBudget">Save</button>
+}
+
+@code {
+    [Parameter]
+    public int BudgetId { get; set; } = 1;
+
+    Keboho.Shared.Budget Budget;
+
+    protected override async Task OnInitAsync()
+    {
+        Budget = await Http.GetJsonAsync<Keboho.Shared.Budget>($"/api/budgets/{BudgetId}");
+    }
+
+    private async Task AddCashFlow()
+    {
+        await Http.PostJsonAsync($"/api/budgets/{BudgetId}/cashflows", new CashFlow { Description = "New cashflow", Amount = 0 });
+        Budget = await Http.GetJsonAsync<Keboho.Shared.Budget>($"/api/budgets/{BudgetId}");
+    }
+
+    private async Task SaveBudget()
+    {
+        await Http.PutJsonAsync($"/api/budgets/{BudgetId}", Budget);
+    }
+
+    private async Task DeleteCashFlow(CashFlow cashFlow)
+    {
+        var response = await Http.DeleteAsync($"/api/budgets/{BudgetId}/cashflows/{cashFlow.Id}");
+
+        if (response.IsSuccessStatusCode)
+        {
+            Budget.CashFlows.Remove(cashFlow);
+        }
+    }
+}

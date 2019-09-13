@@ -1,0 +1,63 @@
+﻿@page "/budgets/{BudgetId:int}"
+@using Keboho.Shared
+@inject HttpClient Http
+
+<NavLink href="@($"/budgets/{BudgetId}/edit")">Edit</NavLink>
+
+@if (Budget != null)
+{
+    <h1>@Budget.Name</h1>
+    <div class="form-group">
+        <label>Month</label>
+        <input type="month" @bind="CurrentMonth" @bind:format="yyyy-MM" class="form-control" />
+    </div>
+    <div class="my-3">
+        Net cash flow this month: @Budget.CashFlowAmountForMonth(CurrentMonth.Year, CurrentMonth.Month).ToCurrencyString()
+    </div>
+    <div class="container-fluid">
+        <div class="row text-muted small mb-2">
+            <div class="col text-center">MON</div>
+            <div class="col text-center">TUE</div>
+            <div class="col text-center">WED</div>
+            <div class="col text-center">THU</div>
+            <div class="col text-center">FRI</div>
+            <div class="col text-center">SAT</div>
+            <div class="col text-center">SUN</div>
+        </div>
+        @{ (StartDate, CashFlowsForMonth) = Budget.DailyCashflowsForMonth(CurrentMonth.Year, CurrentMonth.Month); }
+        @for (var weekRow = 0; weekRow < 6; weekRow++)
+        {
+            <div class="row">
+                @for (var dayOfWeek = 0; dayOfWeek < 7; dayOfWeek++)
+                {
+                    var amount = CashFlowsForMonth.ElementAt(weekRow * 7 + dayOfWeek).Sum(x => x.Amount);
+                    var currentDate = StartDate.AddDays(weekRow * 7 + dayOfWeek);
+                    <div class="col text-center p-2 border-top border-left @(weekRow == 5 && dayOfWeek == 6 ? "border-bottom" : string.Empty) @(dayOfWeek == 6 ? "border-right" : string.Empty )">
+                        <div class="small font-weight-bold @(currentDate.Date == DateTime.Today ? "text-primary" : "text-muted")">
+                            @currentDate.Day
+                        </div>
+                        <div class="py-3 @(amount > 0 ? "text-success" : (amount < 0 ? "text-danger" : string.Empty))">
+                            @amount.ToCurrencyString()
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int BudgetId { get; set; } = 1;
+
+    Keboho.Shared.Budget Budget;
+
+    DateTime StartDate;
+    DateTime CurrentMonth = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1);
+    IEnumerable<IEnumerable<CashFlow>> CashFlowsForMonth = new List<IEnumerable<CashFlow>>();
+
+    protected override async Task OnInitAsync()
+    {
+        Budget = await Http.GetJsonAsync<Keboho.Shared.Budget>($"/api/budgets/{BudgetId}");
+    }
+}
